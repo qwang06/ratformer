@@ -1,0 +1,27 @@
+{
+	"name": "ratformer",
+	"version": "0.0.1",
+	"description": "Platformer ratformer",
+	"main": "index.js",
+	"scripts": {
+		"start": "npx webpack serve --config ./webpack.config.dev.js"
+	},
+	"author": "Qwang",
+	"license": "ISC",
+	"dependencies": {
+		"phaser": "^3.55.2",
+		"twitch-js": "^2.0.0-beta.43"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.17.7",
+		"@babel/preset-env": "^7.16.11",
+		"babel-loader": "^8.2.3",
+		"copy-webpack-plugin": "^10.2.4",
+		"css-loader": "^6.7.1",
+		"html-webpack-plugin": "^5.5.0",
+		"style-loader": "^3.3.1",
+		"webpack": "^5.70.0",
+		"webpack-cli": "^4.9.2",
+		"webpack-dev-server": "^4.7.4"
+	}
+}
