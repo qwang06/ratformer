@@ -1,11 +1,14 @@
 import * as Phaser from 'phaser';
+import config from '../../config';
 import Missile from '../classes/Missile';
 import TwitchJs from 'twitch-js';
 
 const TEST_CHANNEL = 'disguisedtoast';
-const CHECK_MSG = 'KEKW'
-const TWITCH_USER = 'qwang00';
-const TWITCH_TOKEN = 'yw8jluclv8g2ismhi4cg0d3e71uu1m';
+const CHECK_MSG = 'KEKW';
+const {
+	TWITCH_USER,
+	TWITCH_TOKEN
+} = config;
 
 export default class PlayScene extends Phaser.Scene {
 	constructor() {

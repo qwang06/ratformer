@@ -27,7 +27,6 @@ export default class Missile extends Phaser.GameObjects.Sprite {
 			this.x, this.y,
 			400, 500
 		);
-		console.log('this',targetAngle);
 
 		// Gradually (this.TURN_RATE) aim the missile towards the target angle
 		if (this.rotation !== targetAngle) {
