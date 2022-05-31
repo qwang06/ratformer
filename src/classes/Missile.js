@@ -4,7 +4,9 @@ export default class Missile extends Phaser.GameObjects.Sprite {
 	constructor(scene, owner) {
 		const offsetx = owner.width / 2;
 		const offsety = owner.height / 2;
-		super(scene, owner.x + offsetx, owner.y, 'rocket');
+		const startx = owner.x + offsetx;
+		const starty = owner.y;
+		super(scene, startx, starty, 'rocket');
 
 		// Enable physics on the missile
 		scene.add.existing(this);
@@ -12,20 +14,30 @@ export default class Missile extends Phaser.GameObjects.Sprite {
 		// Define constants that affect motion
 		this.SPEED = 250; // missile speed pixels/second
 		this.TURN_RATE = 5; // turn rate in degrees/frame
+		this.startx = startx;
+		this.starty = starty;
 	}
 
 	preUpdate(time, delta) {
 		super.preUpdate(time, delta);
-		this.rotate();
+		this.fire();
 	}
 
-	rotate() {
+	// Fires in a straight line
+	fire() {
+		this.body.velocity.x = this.SPEED;
+		if (this.x > (this.startx + 50)) {
+			this.destroy();
+		}
+	}
+
+	fireAtTarget(target) {
 		// Calculate the angle from the missile to the mouse cursor game.input.x
 		// and game.input.y are the mouse position; substitute with whatever
 		// target coordinates you need.
 		var targetAngle = Phaser.Math.Angle.Between(
 			this.x, this.y,
-			400, 500
+			target.x, target.y
 		);
 
 		// Gradually (this.TURN_RATE) aim the missile towards the target angle

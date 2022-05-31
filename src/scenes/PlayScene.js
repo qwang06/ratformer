@@ -157,6 +157,20 @@ export default class PlayScene extends Phaser.Scene {
 				repeat: -1
 			});
 		}
+
+		if (!this.anims.get('necki-death')) {
+			this.anims.create({
+				key: 'necki-death',
+				frames: this.anims.generateFrameNames('jr-necki', {
+					start: 1,
+					end: 3,
+					zeroPad: 2,
+					prefix: 'death',
+					suffix: '.png'
+				}),
+				frameRate: 3
+			});
+		}
 	}
 
 	initMap() {
@@ -316,7 +330,10 @@ export default class PlayScene extends Phaser.Scene {
 	}
 
 	missileHit(missile, targetHit) {
-		targetHit.destroy();
+		targetHit.on('animationcomplete-necki-death', () => {
+			targetHit.destroy();
+		});
+		targetHit.anims.play('necki-death');
 	}
 
 	restartGame(player, targetSprite) {
