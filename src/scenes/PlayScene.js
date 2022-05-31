@@ -231,6 +231,15 @@ export default class PlayScene extends Phaser.Scene {
 			loop: true,
 			callback: () => {
 				const firstPortal = this.map.getObjectLayer('Portal').objects[0];
+				const firstDead = this.neckis.getFirst(false);
+				if (firstDead) {
+					firstDead.x = firstPortal.x;
+					firstDead.y = firstPortal.y;
+					firstDead.setActive(true);
+					firstDead.setVisible(true);
+					return;
+				}
+
 				if (this.neckis.getLength() === 3) {
 					const firstAlive = this.neckis.getFirst(true);
 					// this.neckis.killAndHide(firstAlive);
@@ -253,7 +262,8 @@ export default class PlayScene extends Phaser.Scene {
 
 	setOverlap() {
 		this.physics.add.overlap(this.player, this.spikes, this.restartGame, null, this);
-		this.physics.add.overlap(this.player, this.neckis, this.restartGame, null, this);		
+		this.physics.add.overlap(this.player, this.neckis, this.restartGame, null, this);
+		this.physics.add.overlap(this.missiles, this.neckis, this.missileHit, null, this);
 	}
 
 	setupCamera() {
@@ -303,6 +313,10 @@ export default class PlayScene extends Phaser.Scene {
 			repeat: -1
 		});
 		this.neckis.add(necki);
+	}
+
+	missileHit(missile, targetHit) {
+		targetHit.destroy();
 	}
 
 	restartGame(player, targetSprite) {
