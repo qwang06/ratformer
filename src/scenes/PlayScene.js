@@ -48,6 +48,7 @@ export default class PlayScene extends Phaser.Scene {
 
 	create() {
 		// Initializers
+		this.canFire = true;
 		this.initMap();
 		this.initLayers();
 		this.initPlayer();
@@ -240,7 +241,7 @@ export default class PlayScene extends Phaser.Scene {
 			collideWorldBounds: true
 		});
 
-		const spawningEvent = this.time.addEvent({
+		this.time.addEvent({
 			delay: 5000,
 			loop: true,
 			callback: () => {
@@ -310,9 +311,21 @@ export default class PlayScene extends Phaser.Scene {
 	}
 
 	launchMissile(owner) {
+		if (!this.canFire) return;
 		// const missile = this.missiles.get(x, y, 'rocket');
 		const missile = new Missile(this, owner);
 		this.missiles.add(missile);
+		this.setCooldown();
+	}
+
+	setCooldown() {
+		this.canFire = false;
+		this.time.addEvent({
+			delay: 1000,
+			callback: () => {
+				this.canFire = true;
+			}
+		});
 	}
 
 	spawnNecki(x, y) {
@@ -333,6 +346,7 @@ export default class PlayScene extends Phaser.Scene {
 		targetHit.on('animationcomplete-necki-death', () => {
 			targetHit.destroy();
 		});
+		missile.destroy();
 		targetHit.anims.play('necki-death');
 	}
 

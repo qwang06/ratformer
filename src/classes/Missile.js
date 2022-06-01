@@ -2,10 +2,17 @@ import * as Phaser from 'phaser';
 
 export default class Missile extends Phaser.GameObjects.Sprite {
 	constructor(scene, owner) {
-		const offsetx = owner.width / 2;
-		const offsety = owner.height / 2;
-		const startx = owner.x + offsetx;
-		const starty = owner.y;
+		const offsetx = owner.width - 10;
+
+		let startx, starty;
+
+		if (!owner.flipX) {
+			startx = owner.x - offsetx;
+		} else {
+			startx = owner.x + offsetx;
+		}
+		starty = owner.y;
+
 		super(scene, startx, starty, 'rocket');
 
 		// Enable physics on the missile
@@ -14,8 +21,10 @@ export default class Missile extends Phaser.GameObjects.Sprite {
 		// Define constants that affect motion
 		this.SPEED = 250; // missile speed pixels/second
 		this.TURN_RATE = 5; // turn rate in degrees/frame
+		this.maxDistance = 250;
 		this.startx = startx;
 		this.starty = starty;
+		this.flipX = !owner.flipX;
 	}
 
 	preUpdate(time, delta) {
@@ -25,8 +34,10 @@ export default class Missile extends Phaser.GameObjects.Sprite {
 
 	// Fires in a straight line
 	fire() {
-		this.body.velocity.x = this.SPEED;
-		if (this.x > (this.startx + 50)) {
+		const upperx = this.startx + this.maxDistance;
+		const lowerx = this.startx - this.maxDistance;
+		this.body.velocity.x = this.SPEED * (!this.flipX ? 1 : -1);
+		if (this.x > upperx || this.x < lowerx) {
 			this.destroy();
 		}
 	}
