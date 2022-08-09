@@ -1,5 +1,8 @@
 import * as Phaser from 'phaser';
-import PlayScene from './src/scenes/PlayScene';
+import Boot from './src/scenes/Boot';
+import Menu from './src/scenes/Menu';
+import Play from './src/scenes/Play';
+import Pause from './src/scenes/Pause';
 
 const config = {
 	name: 'RATFORMER',
@@ -7,7 +10,8 @@ const config = {
 	type: Phaser.AUTO,
 	width: 800,
 	height: 640,
-	scene: [PlayScene],
+	// scene: [Boot, Menu, Play, Pause],
+	scene: [Boot, Play, Pause],
 	pixelArt: false,
 	physics: {
 		default: 'arcade',
