@@ -15,12 +15,11 @@ export default class Bullet extends Phaser.GameObjects.Sprite {
 
 		super(scene, startx, starty, 'enemies');
 
-		// Enable physics on the missile
+		// Enable physics on the bullet
 		scene.add.existing(this);
 		scene.physics.add.existing(this); // scene.physics.world.enableBody(this);
 		// Define constants that affect motion
-		this.SPEED = 500; // missile speed pixels/second
-		this.TURN_RATE = 5; // turn rate in degrees/frame
+		this.SPEED = 500; // bullet speed pixels/second
 		this.MAX_DISTANCE = 600;
 		this.startx = startx;
 		this.starty = starty;

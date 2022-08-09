@@ -1,8 +1,9 @@
 import * as Phaser from 'phaser';
 import config from '../../config';
-import Missile from '../classes/Missile';
 import Beam from '../classes/Beam';
 import Bullet from '../classes/Bullet';
+import Chest from '../classes/Chest';
+import Player from '../classes/Player';
 import TwitchJs from 'twitch-js';
 
 const TEST_CHANNEL = 'qwang00';
@@ -15,13 +16,9 @@ const {
 export default class Play extends Phaser.Scene {
 	constructor() {
 		super({ key: 'Play' });
-
-		this.playerSpeed = 550;
-		this.jumpSpeed = -700;
 	}
 
 	init() {
-		this.canFire = true;
 		this.spawnQueue = [];
 		this.spawnerEvents = {};
 	}
@@ -42,35 +39,8 @@ export default class Play extends Phaser.Scene {
 	}
 
 	update() {
-		const isGrounded = this.player.body.blocked.down || this.player.body.touching.down;
 
-		if (this.cursors.left.isDown) {
-			this.player.body.setVelocityX(-this.playerSpeed);
-			this.player.flipX = false;
-			if (!this.player.anims.isPlaying) {
-				this.player.anims.play('walking');
-			}
-		} else if (this.cursors.right.isDown) {
-			this.player.body.setVelocityX(this.playerSpeed);
-			this.player.flipX = true;
-			if (!this.player.anims.isPlaying) {
-				this.player.anims.play('walking');
-			}
-		} else {
-			this.player.body.setVelocityX(0);
-			this.player.anims.stop('walking');
-			this.player.setFrame('idle01');
-		}
-
-		if (isGrounded && (this.cursors.space.isDown || this.cursors.up.isDown)) {
-			// this.player.anims.stop('walking');
-			this.player.anims.play('jumping');
-			this.player.body.setVelocityY(this.jumpSpeed);
-		}
-
-		if (isGrounded && (this.cursors.shift.isDown)) {
-			this.shootBullet(this.player, 'cone');
-		}
+		this.player.update()
 
 		// When moving, check for portals
 		if (this.player.body.velocity.x !== 0) {
@@ -87,21 +57,6 @@ export default class Play extends Phaser.Scene {
 			}
 		})
 		// this.neckis.playAnimation('necki-walking');
-
-		// const missile = this.missiles.getFirstAlive();
-
-		// this.physics.moveToObject(missile, this.player, 100);
-		// if (x < 0) {
-		// 	Phaser.Actions.IncX(this.missiles.getChildren(), -1);
-		// } else {
-		// 	Phaser.Actions.IncX(this.missiles.getChildren(), 1);
-		// }
-
-		// if (y < 0) {
-		// 	Phaser.Actions.IncY(this.missiles.getChildren(), -1);
-		// } else {
-		// 	Phaser.Actions.IncY(this.missiles.getChildren(), 1);
-		// }
 	}
 
 	setupMap() {
@@ -118,34 +73,35 @@ export default class Play extends Phaser.Scene {
 
 	setupPlayer() {
 		const player = this.gameMap.getObjectLayer('Player').objects[0];
-		this.player = this.add.sprite(player.x, player.y, 'ratz', 'idle01');
-		this.player.flipX = true;
-		this.physics.add.existing(this.player);
-		this.player.body.setCollideWorldBounds(true);
+		this.player = new Player(this, player.x, player.y);
 	}
 
 	setupLevel() {
-		this.missiles = this.physics.add.group({ allowGravity: false });
 		this.bullets = this.physics.add.group({ allowGravity: false });
 		this.beams = this.physics.add.group({ allowGravity: false });
+		this.projectiles = this.physics.add.group({ allowGravity: false });
+		this.items = this.physics.add.group({ allowGravity: true, collideWorldBounds: true  });
+		this.createChests();
 		this.createSpawner();
 		this.createDeathZones();
 		this.setCollisions();
 		this.setOverlap();
 	}
 
+	createChests() {
+		this.chests = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
+		this.gameMap.getObjectLayer('Chest').objects.forEach(chestObj => {
+			const chest = new Chest(this, chestObj.x, chestObj.y);
+			this.chests.add(chest);
+		});
+	}
+
 	createSpawner() {
 		const summonEnemiesPortal = this.gameMap.getObjectLayer('Portal').objects.filter(portal => {
 			return portal.properties.find(property => property.name === 'summonEnemies');
 		});
-		this.neckis = this.physics.add.group({
-			allowGravity: true,
-			collideWorldBounds: true
-		});
-		this.sentinels = this.physics.add.group({
-			allowGravity: false,
-			collideWorldBounds: true
-		});
+		this.neckis = this.physics.add.group({ allowGravity: true, collideWorldBounds: true });
+		this.sentinels = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
 
 		// this.spawnEvent({
 		// 	delay: 5000,
@@ -288,18 +244,23 @@ export default class Play extends Phaser.Scene {
 		this.physics.add.collider(this.player, [this.groundLayer, this.platformsLayer]);
 		this.physics.add.collider(this.neckis, [this.groundLayer, this.platformsLayer]);
 		this.physics.add.collider(this.sentinels, [this.groundLayer, this.platformsLayer]);
+		this.physics.add.collider(this.items, [this.groundLayer, this.platformsLayer]);
 		this.groundLayer.setCollisionBetween(1, 500); // `start`, `stop` - value is the number in layer data
 		this.platformsLayer.setCollisionBetween(1, 500);
 		// this.groundLayer.setCollisionByExclusion([1]);
 	}
 
 	setOverlap() {
-		this.physics.add.overlap(this.player, this.spikes, this.restartGame, null, this);
 		this.physics.add.overlap(this.player, this.neckis, this.restartGame, null, this);
-		this.physics.add.overlap(this.missiles, this.neckis, this.missileHit, null, this);
-		this.physics.add.overlap(this.bullets, [this.neckis, this.sentinels], this.bulletHit, null, this);
+		this.physics.add.overlap(this.player, this.items, this.pickUpItem, null, this);
+		this.physics.add.overlap(this.bullets, [this.neckis, this.sentinels, this.chests], this.bulletHit, null, this);
 		this.physics.add.overlap(this.beams, this.player, this.beamHit, null, this);
 		this.physics.add.overlap(this.player, this.deathZones, this.restartGame, null, this);
+	}
+
+	pickUpItem(player, item) {
+		this.player.pickUp(item);
+		item.destroy();
 	}
 
 	setupCamera() {
@@ -335,60 +296,11 @@ export default class Play extends Phaser.Scene {
 		});		
 	}
 
-	launchMissile(owner) {
-		if (!this.canFire) return;
-		// const missile = this.missiles.get(x, y, 'rocket');
-		const missile = new Missile(this, owner);
-		this.missiles.add(missile);
-		this.setCooldown();
-	}
-
-	shootBullet(owner, pattern) {
-		if (!this.canFire) return;
-		if (pattern === 'cone') {
-			let angles = [-60, -20, 60, 20, 0];
-			angles.forEach(angle => {
-				this.bullets.add(new Bullet(this, owner, angle * Math.PI/180));
-			})
-		} else {
-			this.bullets.add(new Bullet(this, owner));
-		}
-		this.setCooldown();
-	}
-
 	shootBeam(owner, target) {
 		const beam = new Beam(this, owner, target);
 		this.beams.add(beam);
 		owner.body.width = owner.width;
 		owner.body.height = owner.height;
-	}
-
-	setCooldown() {
-		this.canFire = false;
-		this.time.addEvent({
-			delay: 50,
-			callback: () => {
-				this.canFire = true;
-			}
-		});
-	}
-
-	missileHit(missile, targetHit) {
-		if (targetHit.patrolTween) {
-			targetHit.patrolTween.stop();
-		}
-		if (targetHit.deathAnim) {
-			targetHit.on('animationcomplete-' + targetHit.deathAnim, () => {
-				targetHit.destroy();
-			});
-			targetHit.anims.play(targetHit.deathAnim);
-			targetHit.body.width = targetHit.width;
-			targetHit.body.height = targetHit.height;
-		} else {
-			targetHit.destroy();
-		}
-
-		missile.destroy();
 	}
 
 	bulletHit(bullet, targetHit) {
@@ -515,6 +427,15 @@ export default class Play extends Phaser.Scene {
 				key: 'beam-explode',
 				frames: this.anims.generateFrameNames('enemies', frameConfig(5, 'sentinel/explode')),
 				frameRate: 10
+			});
+		}
+
+		if (!this.anims.get('steely-fire')) {
+			this.anims.create({
+				key: 'steely-fire',
+				frames: this.anims.generateFrameNames('items', frameConfig(2, 'steely_throw')),
+				frameRate: 15,
+				repeat: -1
 			});
 		}
 	}
