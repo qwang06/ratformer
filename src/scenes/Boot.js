@@ -13,20 +13,18 @@ export default class Boot extends Phaser.Scene {
 	preload() {
 		this.createProgressBar();
 		this.load.image('background', '/static/kerningcity-background.png');
-		// this.load.image('ground', '/static/ground.png');
-		// this.load.image('cbd-block', '/static/cbd-block.png');
 		this.load.image('platformerTiles', '/static/tilesheet_complete.png');
+		this.load.image('kenney_grass', '/static/kenney_grass.png');
+		this.load.image('kenney_castle', '/static/kenney_castle.png');
 		this.load.image('knighthawks', '/static/knight3.png');
 		this.load.image('chest', '/static/chest.png');
 		this.load.bitmapFont('arcade', '/static/arcade-font.png', '/static/arcade-font.xml');
-		// this.load.image('groundTiles', '/static/spritesheet_ground.png');
-		// this.load.image('objectsTiles', '/static/spritesheet_tiles.png');
-		// this.load.image('spikeA-Up', '/static/spikes_A1.png');
 		this.load.multiatlas('ratz', '/static/ratz.json', '/static'); // main character
 		this.load.multiatlas('enemies', '/static/enemies.json', '/static');
 		this.load.multiatlas('items', '/static/items.json', '/static');
   		this.load.json('levelData', '/static/levelData.json');
-  		this.load.tilemapTiledJSON('map', '/static/stage1.json');
+  		// this.load.tilemapTiledJSON('map', '/static/stage1.json');
+  		this.load.tilemapTiledJSON('map', '/static/stage2.json');
 	}
 
 	createProgressBar() {		

@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import config from '../../config';
 import Beam from '../classes/Beam';
-import Bullet from '../classes/Bullet';
 import Chest from '../classes/Chest';
 import Player from '../classes/Player';
 import TwitchJs from 'twitch-js';
@@ -39,8 +38,8 @@ export default class Play extends Phaser.Scene {
 	}
 
 	update() {
-
 		this.player.update()
+		this.bgImage.y = this.cameras.main.worldView.y - 100;
 
 		// When moving, check for portals
 		if (this.player.body.velocity.x !== 0) {
@@ -61,13 +60,15 @@ export default class Play extends Phaser.Scene {
 
 	setupMap() {
 		const map = this.make.tilemap({ key: 'map' });
-		const platformerTileset = map.addTilesetImage('kenney', 'platformerTiles'); // params: name of tileset in tiled editor, key of the loaded tileset
-		const backgroundLayer = map.createLayer('Background', platformerTileset);
-		this.add.tileSprite(0, 0, map.widthInPixels, 900, 'background').setOrigin(0);
+		// const platformerTileset = map.addTilesetImage('kenney', 'platformerTiles'); // params: name of tileset in tiled editor, key of the loaded tileset
+		const kgTileset = map.addTilesetImage('kenney_grass', 'kenney_grass');
+		const kcTileset = map.addTilesetImage('kenney_castle', 'kenney_castle');
+		// const backgroundLayer = map.createLayer('Background', platformerTileset);
+		this.bgImage = this.add.tileSprite(0, 0, map.widthInPixels, map.heightInPixels, 'background').setOrigin(0);
 		this.physics.world.bounds.width = map.widthInPixels;
 		this.physics.world.bounds.height = map.heightInPixels;
-		this.groundLayer = map.createLayer('Ground', platformerTileset);
-		this.platformsLayer = map.createLayer('Platforms', platformerTileset);
+		this.groundLayer = map.createLayer('Ground', kgTileset);
+		this.platformsLayer = map.createLayer('Platforms', kcTileset);
 		this.gameMap = map;
 	}
 
@@ -77,7 +78,6 @@ export default class Play extends Phaser.Scene {
 	}
 
 	setupLevel() {
-		this.bullets = this.physics.add.group({ allowGravity: false });
 		this.beams = this.physics.add.group({ allowGravity: false });
 		this.projectiles = this.physics.add.group({ allowGravity: false });
 		this.items = this.physics.add.group({ allowGravity: true, collideWorldBounds: true  });
@@ -90,14 +90,14 @@ export default class Play extends Phaser.Scene {
 
 	createChests() {
 		this.chests = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
-		this.gameMap.getObjectLayer('Chest').objects.forEach(chestObj => {
+		this.gameMap.getObjectLayer('Chests').objects.forEach(chestObj => {
 			const chest = new Chest(this, chestObj.x, chestObj.y);
 			this.chests.add(chest);
 		});
 	}
 
 	createSpawner() {
-		const summonEnemiesPortal = this.gameMap.getObjectLayer('Portal').objects.filter(portal => {
+		const summonEnemiesPortal = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
 			return portal.properties.find(property => property.name === 'summonEnemies');
 		});
 		this.neckis = this.physics.add.group({ allowGravity: true, collideWorldBounds: true });
@@ -146,7 +146,7 @@ export default class Play extends Phaser.Scene {
 			lower: this.player.x - 500,
 			upper: this.player.x + 1000
 		}
-		this.portalsWithinRange = this.gameMap.getObjectLayer('Portal').objects.filter(portal => {
+		this.portalsWithinRange = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
 			return portal.x > portalBounds.lower && portal.x < portalBounds.upper;
 		});
 		this.portalsWithinRange.sort((portalA, portalB) => {
@@ -253,7 +253,7 @@ export default class Play extends Phaser.Scene {
 	setOverlap() {
 		this.physics.add.overlap(this.player, this.neckis, this.restartGame, null, this);
 		this.physics.add.overlap(this.player, this.items, this.pickUpItem, null, this);
-		this.physics.add.overlap(this.bullets, [this.neckis, this.sentinels, this.chests], this.bulletHit, null, this);
+		this.physics.add.overlap(this.projectiles, [this.neckis, this.sentinels, this.chests], this.projectileHit, null, this);
 		this.physics.add.overlap(this.beams, this.player, this.beamHit, null, this);
 		this.physics.add.overlap(this.player, this.deathZones, this.restartGame, null, this);
 	}
@@ -303,7 +303,7 @@ export default class Play extends Phaser.Scene {
 		owner.body.height = owner.height;
 	}
 
-	bulletHit(bullet, targetHit) {
+	projectileHit(bullet, targetHit) {
 		if (targetHit.patrolTween) {
 			targetHit.patrolTween.stop();
 		}

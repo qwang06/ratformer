@@ -8,8 +8,8 @@ const config = {
 	name: 'RATFORMER',
 	title: 'RATFORMER',
 	type: Phaser.AUTO,
-	width: 800,
-	height: 640,
+	width: 770,
+	height: 770,
 	scene: [Boot, Menu, Play, Pause],
 	pixelArt: false,
 	physics: {

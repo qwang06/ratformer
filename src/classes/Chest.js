@@ -9,12 +9,13 @@ export default class Chest extends Phaser.GameObjects.Sprite {
 		this.deathScore = 50;
 		scene.add.existing(this);
 		scene.physics.add.existing(this);
+		const itemFrames = Object.keys(this.scene.textures.get('items').frames);
+		const itemNames = itemFrames.filter(item => !item.includes('_')); // `_` incdicates it's an animation
+		this.itemName = itemNames[Math.floor(Math.random()*itemNames.length)]; // Choose randomly
 	}
 
 	destroy() {
-		const itemNames = ['subi', 'steely', 'dew'];
-		const randomName = Math.floor(Math.random()*itemNames.length);
-		const item = new Item(this.scene, this.x, this.y-50, randomName); // Spawn it slightly above so it drops
+		const item = new Item(this.scene, this.x, this.y-50, this.itemName); // Spawn it slightly above so it drops
 		this.scene.items.add(item);
 
 		super.destroy();

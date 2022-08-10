@@ -1,6 +1,5 @@
 import * as Phaser from 'phaser';
-import Bullet from './Bullet';
-import ItemProjectile from './ItemProjectile';
+import Projectile from './Projectile';
 
 export default class Player extends Phaser.GameObjects.Sprite {
 	constructor(scene, x, y) {
@@ -11,11 +10,11 @@ export default class Player extends Phaser.GameObjects.Sprite {
 		this.body.setCollideWorldBounds(true);
 		this.flipX = true;
 
-		this.playerSpeed = 550;
-		this.jumpSpeed = -700;
-		this.projectileCooldown = 150;
+		this.playerSpeed = 250;
+		this.jumpSpeed = -600;
+		this.projectileCooldown = 500;
 		this.canFire = true;
-		this.projectile = '';
+		this.projectile = 'bullet'; // start off with normal bullets?
 	}
 
 	destroy() {
@@ -57,33 +56,37 @@ export default class Player extends Phaser.GameObjects.Sprite {
 		if (isGrounded && (cursors.shift.isDown)) {
 			if (this.projectile) {
 				this.shootProjectile(this);
-			} else {
-				this.shootBullet(this);
 			}
 		}
 
 		super.update();
 	}
 
+	// Here is where I decide what items does
 	pickUp(item) {
-		this.projectile = item.item;
+		const throwingStars = ['subi', 'steely'];
+		this.item = item.item;
+		if (throwingStars.includes(this.item)) {
+			this.projectileCooldown = 250;
+			this.projectile = this.item;
+		} else if (this.item === 'dew') {
+			this.projectilePattern = 'cone';
+		}
 	}
 
-	shootProjectile(owner, pattern) {
+	shootProjectile(owner) {
 		if (!this.canFire) return;
-		this.scene.projectiles.add(new ItemProjectile(this.scene, owner, this.projectile));
-		this.setCooldown();
-	}
-
-	shootBullet(owner, pattern) {
-		if (!this.canFire) return;
-		if (pattern === 'cone') {
+		const projectileConfig = {
+			projectile: this.projectile
+		}
+		if (this.projectilePattern === 'cone') {
 			let angles = [-60, -20, 60, 20, 0];
 			angles.forEach(angle => {
-				this.scene.bullets.add(new Bullet(this.scene, owner, angle * Math.PI/180));
+				projectileConfig.angle = angle;
+				this.scene.projectiles.add(new Projectile(this.scene, owner, projectileConfig));
 			})
 		} else {
-			this.scene.bullets.add(new Bullet(this.scene, owner));
+			this.scene.projectiles.add(new Projectile(this.scene, owner, projectileConfig));
 		}
 		this.setCooldown();
 	}
