@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser';
 import config from '../../config';
-import Beam from '../classes/Beam';
 import Chest from '../classes/Chest';
 import Player from '../classes/Player';
+import Sentinel from '../classes/enemies/Sentinel';
 import TwitchJs from 'twitch-js';
 
 const TEST_CHANNEL = 'qwang00';
@@ -20,6 +20,7 @@ export default class Play extends Phaser.Scene {
 	init() {
 		this.spawnQueue = [];
 		this.spawnerEvents = {};
+		this.score = 0;
 	}
 
 	create() {
@@ -27,6 +28,7 @@ export default class Play extends Phaser.Scene {
 		this.setupPlayer();
 		this.setupAnimations();
 		this.setupLevel();
+		this.setupHUD();
 		this.setupCamera();
 		// this.setupTwitch();
 		this.cursors = this.input.keyboard.createCursorKeys();
@@ -39,7 +41,6 @@ export default class Play extends Phaser.Scene {
 
 	update() {
 		this.player.update()
-		this.bgImage.y = this.cameras.main.worldView.y - 100;
 
 		// When moving, check for portals
 		if (this.player.body.velocity.x !== 0) {
@@ -64,7 +65,10 @@ export default class Play extends Phaser.Scene {
 		const kgTileset = map.addTilesetImage('kenney_grass', 'kenney_grass');
 		const kcTileset = map.addTilesetImage('kenney_castle', 'kenney_castle');
 		// const backgroundLayer = map.createLayer('Background', platformerTileset);
-		this.bgImage = this.add.tileSprite(0, 0, map.widthInPixels, map.heightInPixels, 'background').setOrigin(0);
+		this.add.tileSprite(0, 0, map.widthInPixels, map.heightInPixels, 'background')
+			.setOrigin(0)
+			.setScrollFactor(1, 0)
+		;
 		this.physics.world.bounds.width = map.widthInPixels;
 		this.physics.world.bounds.height = map.heightInPixels;
 		this.groundLayer = map.createLayer('Ground', kgTileset);
@@ -75,6 +79,30 @@ export default class Play extends Phaser.Scene {
 	setupPlayer() {
 		const player = this.gameMap.getObjectLayer('Player').objects[0];
 		this.player = new Player(this, player.x, player.y);
+	}
+
+	setupHUD() {
+		this.healthText = this.add.bitmapText(60, 30, 'arcade', String(this.player.health).padStart(3, 0));
+		this.scoreText = this.add.bitmapText(150, 30, 'arcade', `SCORE ${String(this.score).padStart(5, 0)}`);
+
+		// setDropShadow(4, 6, 0xff00ff, 0.7) - very retro magenta
+		this.healthText
+			.setOrigin(0)
+			.setScale(0.5)
+			.setScrollFactor(0)
+			.setDropShadow(1, 1)
+		;
+		this.scoreText
+			.setOrigin(0)
+			.setScale(0.5)
+			.setScrollFactor(0)
+			.setDropShadow(1, 1)
+		;
+		this.add.sprite(25, 25, 'heart')
+			.setScrollFactor(0)
+			.setScale(0.5)
+			.setOrigin(0)
+		;
 	}
 
 	setupLevel() {
@@ -89,7 +117,7 @@ export default class Play extends Phaser.Scene {
 	}
 
 	createChests() {
-		this.chests = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
+		this.chests = this.physics.add.group({ allowGravity: true, collideWorldBounds: true });
 		this.gameMap.getObjectLayer('Chests').objects.forEach(chestObj => {
 			const chest = new Chest(this, chestObj.x, chestObj.y);
 			this.chests.add(chest);
@@ -113,10 +141,10 @@ export default class Play extends Phaser.Scene {
 		// });
 
 		this.time.addEvent({
-			delay: 4000,
+			delay: 1000,
 			loop: false,
 			callback: () => {
-				this.spawnSentinel(summonEnemiesPortal[0].x, summonEnemiesPortal[0].y-10);
+				this.spawnSentinel(summonEnemiesPortal[0].x, summonEnemiesPortal[0].y);
 			}
 		});
 	}
@@ -127,15 +155,15 @@ export default class Play extends Phaser.Scene {
 			collideWorldBounds: true
 		});
 		this.gameMap.getObjectLayer('Death').objects.forEach(deathObject => {
-			const zone = this.add.zone(deathObject.x, deathObject.y).setSize(100, 20);
+			const zone = this.add.zone(deathObject.x, deathObject.y).setSize(160, 20);
 			this.deathZones.add(zone);
 		});
 	}
 
 	getNearestPortal(portals) {
 		return portals.reduce((previousPortal, currentPortal) => {
-			const previousDistance = Math.sqrt(Math.pow(previousPortal.x - this.player.x, 2) + Math.pow(previousPortal.y - this.player.y, 2));
-			const currentDistance = Math.sqrt(Math.pow(currentPortal.x - this.player.x, 2) + Math.pow(currentPortal.y - this.player.y, 2));
+			const previousDistance = Phaser.Math.Distance.Between(previousPortal.x, previousPortal.y, this.player.x, this.player.y);
+			const currentDistance = Phaser.Math.Distance.Between(currentPortal.x, currentPortal.y, this.player.x, this.player.y);
 			return previousDistance > currentDistance ? currentPortal : previousPortal;
 		});
 	}
@@ -150,8 +178,8 @@ export default class Play extends Phaser.Scene {
 			return portal.x > portalBounds.lower && portal.x < portalBounds.upper;
 		});
 		this.portalsWithinRange.sort((portalA, portalB) => {
-			const portalADistance = Math.sqrt(Math.pow(portalA.x - this.player.x, 2) + Math.pow(portalA.y - this.player.y, 2));
-			const portalBDistance = Math.sqrt(Math.pow(portalB.x - this.player.x, 2) + Math.pow(portalB.y - this.player.y, 2));
+			const portalADistance = Phaser.Math.Distance.Between(portalA.x, portalA.y, this.player.x, this.player.y);
+			const portalBDistance = Phaser.Math.Distance.Between(portalB.x, portalB.y, this.player.x, this.player.y);
 			if (portalADistance < portalBDistance) {
 				return -1;
 			} else if (portalADistance > portalBDistance) {
@@ -221,23 +249,8 @@ export default class Play extends Phaser.Scene {
 	}
 
 	spawnSentinel(x, y) {
-		const sentinel = this.sentinels.get(x, y, 'enemies'); // Float
-		sentinel.anims.play('sentinel-idle');
-		sentinel.deathScore = 300;
-		sentinel.body.width = sentinel.width;
-		sentinel.body.height = sentinel.height;
+		const sentinel = new Sentinel(this, x, y);
 		this.sentinels.add(sentinel);
-		this.time.addEvent({
-			delay: 2000,
-			callback: () => {
-				// An error occurs if the sentinel is destroyed before releasing its
-				// attack so we need to check to make sure it can play the animations
-				if (sentinel.anims) {
-					sentinel.anims.play('sentinel-attack');
-					this.shootBeam(sentinel, this.player);
-				}
-			}
-		});
 	}
 
 	setCollisions() {
@@ -245,22 +258,18 @@ export default class Play extends Phaser.Scene {
 		this.physics.add.collider(this.neckis, [this.groundLayer, this.platformsLayer]);
 		this.physics.add.collider(this.sentinels, [this.groundLayer, this.platformsLayer]);
 		this.physics.add.collider(this.items, [this.groundLayer, this.platformsLayer]);
+		this.physics.add.collider(this.chests, [this.groundLayer, this.platformsLayer]);
 		this.groundLayer.setCollisionBetween(1, 500); // `start`, `stop` - value is the number in layer data
 		this.platformsLayer.setCollisionBetween(1, 500);
 		// this.groundLayer.setCollisionByExclusion([1]);
 	}
 
 	setOverlap() {
-		this.physics.add.overlap(this.player, this.neckis, this.restartGame, null, this);
+		this.physics.add.overlap(this.player, this.neckis, this.endGame, null, this);
 		this.physics.add.overlap(this.player, this.items, this.pickUpItem, null, this);
 		this.physics.add.overlap(this.projectiles, [this.neckis, this.sentinels, this.chests], this.projectileHit, null, this);
 		this.physics.add.overlap(this.beams, this.player, this.beamHit, null, this);
-		this.physics.add.overlap(this.player, this.deathZones, this.restartGame, null, this);
-	}
-
-	pickUpItem(player, item) {
-		this.player.pickUp(item);
-		item.destroy();
+		this.physics.add.overlap(this.player, this.deathZones, this.endGame, null, this);
 	}
 
 	setupCamera() {
@@ -296,11 +305,9 @@ export default class Play extends Phaser.Scene {
 		});		
 	}
 
-	shootBeam(owner, target) {
-		const beam = new Beam(this, owner, target);
-		this.beams.add(beam);
-		owner.body.width = owner.width;
-		owner.body.height = owner.height;
+	pickUpItem(player, item) {
+		this.player.pickUp(item);
+		item.destroy();
 	}
 
 	projectileHit(bullet, targetHit) {
@@ -323,6 +330,7 @@ export default class Play extends Phaser.Scene {
 
 	// Not sure why these params are reversed here??
 	beamHit(targetHit, beam) {
+		this.player.takeDamage(1);
 		beam.explode();
 	}
 
@@ -344,10 +352,13 @@ export default class Play extends Phaser.Scene {
 		target.destroy();
 	}
 
-	restartGame(collider, collidee) {
-		// Ignore death animation sprites
-		if (collidee.frame && collidee.frame.name.includes('death')) return;
-		this.scene.restart();
+	endGame(collider, collidee) {
+		if (collider && collidee) {
+			// Ignore death animation sprites
+			if (collidee.frame && collidee.frame.name.includes('death')) return;
+		}
+		this.scene.pause();
+		this.scene.launch('End');
 	}
 
 	setupAnimations() {

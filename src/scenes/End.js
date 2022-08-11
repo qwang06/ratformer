@@ -1,28 +1,27 @@
 import * as Phaser from 'phaser';
 
-export default class Pause extends Phaser.Scene {
+export default class End extends Phaser.Scene {
 
 	constructor() {
-		super({ key: 'Pause' });
+		super({ key: 'End' });
 	}
 
 	create() {
 		this.overlay = this.cameras.add(0, 0, this.game.config.width, this.game.config.height).setBackgroundColor('rgba(0, 0, 0, 0.5)');
 		this.createButtons();
-		this.input.keyboard.on('keydown-ESC', this.resumePlay.bind(this));
 	}
 
 	createButtons() {
 		const x = this.game.config.width/2;
 		const y = this.game.config.height/2;
-		this.pausedText = this.add.bitmapText(x, 100, 'arcade', 'Paused').setOrigin(0.5, 0.5);
-		this.resumeText = this.add.bitmapText(x, y, 'arcade', 'Resume');
+		this.gameOverText = this.add.bitmapText(x, 100, 'arcade', 'GAME OVER').setOrigin(0.5, 0.5);
+		this.restartText = this.add.bitmapText(x, y, 'arcade', 'Restart');
 		this.menuText = this.add.bitmapText(x, y + 50, 'arcade', 'Back to Menu');
-		this.resumeText
+		this.restartText
 			.setInteractive({ useHandCursor: true })
 			.setScale(0.5)
 			.setOrigin(0.5, 0.5)
-			.on('pointerup', this.resumePlay.bind(this))
+			.on('pointerup', this.restartGame.bind(this))
 		;
 		this.menuText
 			.setInteractive({ useHandCursor: true })
@@ -33,16 +32,17 @@ export default class Pause extends Phaser.Scene {
 	}
 
 	toggleButtons() {
-		this.pausedText.visible = !this.pausedText.visible;
-		this.resumeText.visible = !this.resumeText.visible;
+		this.gameOverText.visible = !this.gameOverText.visible;
+		this.restartText.visible = !this.restartText.visible;
 		this.menuText.visible = !this.menuText.visible;
 	}
 
-	resumePlay() {
+	restartGame() {
 		this.overlay.visible = !this.overlay.visible;
 		this.toggleButtons();
-		this.scene.pause();
-		this.scene.resume('Play');
+		this.scene.stop();
+		this.scene.stop('Play');
+		this.scene.start('Play');
 	}
 
 	backToMenu() {

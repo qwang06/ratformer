@@ -15,21 +15,26 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 
 		super(scene, startx, starty, 'enemies');
 
-		// Enable physics on the missile
+		// Enable physics on the beam
 		scene.add.existing(this);
-		scene.physics.add.existing(this); // scene.physics.world.enableBody(this);
+		scene.physics.add.existing(this);
 		// Define constants that affect motion
-		this.SPEED = 500; // missile speed pixels/second
-		this.TURN_RATE = 5; // turn rate in degrees/frame
-		this.MAX_DISTANCE = 350;
-		this.startx = startx;
-		this.starty = starty;
-		this.targetx = target.x; // Use these so that it doesn't actually home in on the target
-		this.targety = target.y;
+		this.SPEED = 500; // beam speed pixels/second
 		this.flipX = !owner.flipX;
 		this.target = target;
+		this.targetx = '';
+		this.targety = '';
 
 		this.anims.play('beam-fire');
+
+		this.scene.time.addEvent({
+			delay: 1800,
+			callback: () => {
+				if (this.anims && !this.anims.currentAnim.key.includes('explode')) {
+					this.explode();
+				}
+			}
+		});
 	}
 
 	preUpdate(time, delta) {
@@ -37,29 +42,31 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 		if (this.anims && !this.anims.isPlaying) {
 			this.body.width = this.width;
 			this.body.height = this.height;
+			if (this.targetx === '') {
+				// We want the target's position here so that it's actually 
+				// the beam that targets the player and not the charge-up animation
+				this.targetx = this.target.x;
+				this.targety = this.target.y;
+			}
 			this.fire();
-		}
+		 }
 	}
 
 	// Fires in a straight line
 	fire() {
-		const upperx = this.startx + this.MAX_DISTANCE;
-		const lowerx = this.startx - this.MAX_DISTANCE;
-
-		if (this.x > upperx || this.x < lowerx) {
-			this.explode();
+		if (this.target) {
+			this.aimAtTarget(this.target);
 		} else {
-			if (this.target) {
-				this.aimAtTarget(this.target);
-			} else {
-				this.body.velocity.x = this.SPEED * (!this.flipX ? 1 : -1);
-			}
+			this.body.velocity.x = this.SPEED * (!this.flipX ? 1 : -1);
 		}
 	}
 
+	// TODO: Fix player jumping on beams
 	explode() {
 		this.body.velocity.x = 0;
 		this.body.velocity.y = 0;
+		this.body.width = 0;
+		this.body.height = 0;
 		this.anims.play('beam-explode');
 		this.on('animationcomplete-beam-explode', () => {
 			this.destroy();
@@ -67,7 +74,11 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 	}
 
 	aimAtTarget(target) {
-		// Calculate the angle from the missile to the target
+		if (Math.abs(this.targetx - this.x) < 3 && Math.abs(this.targety - this.y) < 3) {
+			// Considering within 3 pixels close enough
+			return this.explode();
+		}
+		// Calculate the angle from the beam to the target
 		var targetAngle = Phaser.Math.Angle.Between(
 			this.x, this.y,
 			this.targetx, this.targety
