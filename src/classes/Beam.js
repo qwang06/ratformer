@@ -1,5 +1,7 @@
 import * as Phaser from 'phaser';
 
+const SPEED = 500;
+
 export default class Beam extends Phaser.GameObjects.Sprite {
 	constructor(scene, owner, target) {
 		const offsetx = owner.width - 10;
@@ -19,7 +21,7 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 		scene.add.existing(this);
 		scene.physics.add.existing(this);
 		// Define constants that affect motion
-		this.SPEED = 500; // beam speed pixels/second
+		this.speed = SPEED; // beam speed pixels/second
 		this.flipX = !owner.flipX;
 		this.target = target;
 		this.targetx = '';
@@ -55,9 +57,9 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 	// Fires in a straight line
 	fire() {
 		if (this.target) {
-			this.aimAtTarget(this.target);
+			this.aimAtTarget();
 		} else {
-			this.body.velocity.x = this.SPEED * (!this.flipX ? 1 : -1);
+			this.body.velocity.x = this.speed * (!this.flipX ? 1 : -1);
 		}
 	}
 
@@ -73,7 +75,7 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 		});
 	}
 
-	aimAtTarget(target) {
+	aimAtTarget() {
 		if (Math.abs(this.targetx - this.x) < 3 && Math.abs(this.targety - this.y) < 3) {
 			// Considering within 3 pixels close enough
 			return this.explode();
@@ -83,8 +85,8 @@ export default class Beam extends Phaser.GameObjects.Sprite {
 			this.x, this.y,
 			this.targetx, this.targety
 		);
-		// Calculate velocity vector based on targetAngle and this.SPEED
-		this.body.velocity.x = Math.cos(targetAngle) * this.SPEED;
-		this.body.velocity.y = Math.sin(targetAngle) * this.SPEED;
+		// Calculate velocity vector based on targetAngle and this.speed
+		this.body.velocity.x = Math.cos(targetAngle) * this.speed;
+		this.body.velocity.y = Math.sin(targetAngle) * this.speed;
 	}
 }

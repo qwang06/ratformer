@@ -2,7 +2,9 @@ import * as Phaser from 'phaser';
 import config from '../../config';
 import Chest from '../classes/Chest';
 import Player from '../classes/Player';
+import Projectile from '../classes/Projectile';
 import Sentinel from '../classes/enemies/Sentinel';
+import Necki from '../classes/enemies/Necki';
 import TwitchJs from 'twitch-js';
 
 const TEST_CHANNEL = 'qwang00';
@@ -46,17 +48,6 @@ export default class Play extends Phaser.Scene {
 		if (this.player.body.velocity.x !== 0) {
 			this.searchForPortals();
 		}
-
-		this.spawnEnemies();
-
-		this.neckis.getChildren().forEach(necki => {
-			if (necki.frame.name.includes('death')) {
-				necki.setVelocityX(0);
-			} else {
-				necki.setVelocityX(-100);
-			}
-		})
-		// this.neckis.playAnimation('necki-walking');
 	}
 
 	setupMap() {
@@ -68,11 +59,13 @@ export default class Play extends Phaser.Scene {
 		this.add.tileSprite(0, 0, map.widthInPixels, map.heightInPixels, 'background')
 			.setOrigin(0)
 			.setScrollFactor(1, 0)
+			.setDepth(-2)
 		;
 		this.physics.world.bounds.width = map.widthInPixels;
 		this.physics.world.bounds.height = map.heightInPixels;
 		this.groundLayer = map.createLayer('Ground', kgTileset);
 		this.platformsLayer = map.createLayer('Platforms', kcTileset);
+		this.edgeBlockLayer = map.createLayer('Edge Block', kcTileset); // This layer is to prevent enemies from walking over the edge (it's invisible)
 		this.gameMap = map;
 	}
 
@@ -125,28 +118,30 @@ export default class Play extends Phaser.Scene {
 	}
 
 	createSpawner() {
-		const summonEnemiesPortal = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
-			return portal.properties.find(property => property.name === 'summonEnemies');
-		});
 		this.neckis = this.physics.add.group({ allowGravity: true, collideWorldBounds: true });
 		this.sentinels = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
+		this.portals = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
+		this.enemyProjectiles = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
 
-		// this.spawnEvent({
-		// 	delay: 5000,
-		// 	loop: true,
-		// 	max: 15,
-		// 	portal: summonEnemiesPortal[0],
-		// 	group: this.neckis,
-		// 	spawner: this.spawnNecki.bind(this)
-		// });
-
-		this.time.addEvent({
-			delay: 1000,
-			loop: false,
-			callback: () => {
-				this.spawnSentinel(summonEnemiesPortal[0].x, summonEnemiesPortal[0].y);
-			}
+		// TODO: these can probably be removed
+		this.meleePortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
+			// This loops through all portals so creating new portals just need to run here
+			this.portals.get(portal.x, portal.y, 'portal')
+				.setOrigin(1)
+				.setDepth(-1)
+			;
+			return portal.properties.find(property => property.name === 'melee');
 		});
+		this.rangedPortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
+			return portal.properties.find(property => property.name === 'ranged');
+		});
+		this.projectilesPortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
+			return portal.properties.find(property => property.name === 'projectiles');
+		});
+
+		this.spawnSentinel(this.rangedPortals[0].x, this.rangedPortals[0].y);
+		this.spawnNecki(this.meleePortals[0].x, this.meleePortals[0].y);
+		this.spawnEnemyProjectile(this.projectilesPortals[0].x, this.projectilesPortals[0].y);
 	}
 
 	createDeathZones() {
@@ -169,13 +164,15 @@ export default class Play extends Phaser.Scene {
 	}
 
 	searchForPortals() {
-		if (!this.spawnQueue.length) return;
+		// if (!this.spawnQueue.length) return;
 		const portalBounds = {
-			lower: this.player.x - 500,
-			upper: this.player.x + 1000
+			lowerX: this.player.x - this.game.config.width,
+			upperX: this.player.x + this.game.config.width,
+			lowerY: this.player.y - 500,
+			upperY: this.player.y + 500
 		}
 		this.portalsWithinRange = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
-			return portal.x > portalBounds.lower && portal.x < portalBounds.upper;
+			return portal.x > portalBounds.lowerX && portal.x < portalBounds.upperX && portal.y > portalBounds.lowerY && portal.y < portalBounds.upperY;
 		});
 		this.portalsWithinRange.sort((portalA, portalB) => {
 			const portalADistance = Phaser.Math.Distance.Between(portalA.x, portalA.y, this.player.x, this.player.y);
@@ -229,22 +226,7 @@ export default class Play extends Phaser.Scene {
 	}
 
 	spawnNecki(x, y) {
-		const necki = this.neckis.get(x, y, 'enemies');
-		necki.anims.play('necki-walking');
-		necki.deathScore = 100;
-		necki.deathAnim = 'necki-death';
-		necki.body.width = necki.width;
-		necki.body.height = necki.height;
-		// Tweens don't work with collisions because collisions only work
-		// with bodies with velocity and tweens only update the x,y
-		// necki.patrolTween = this.tweens.add({
-		// 	targets: necki,
-		// 	x: x - 200,
-		// 	duration: 1500,
-		// 	flipX: true,
-		// 	yoyo: true,
-		// 	repeat: -1
-		// });
+		const necki = new Necki(this, x, y);
 		this.neckis.add(necki);
 	}
 
@@ -253,19 +235,34 @@ export default class Play extends Phaser.Scene {
 		this.sentinels.add(sentinel);
 	}
 
+	spawnEnemyProjectile(x, y) {
+		const projectileConfig = {
+			projectile: 'subi',
+			target: this.player,
+			lifetime: 1500
+		};
+		const portalProperties = {
+			width: 70,
+			flipX: false,
+			x, y
+		}
+		const projectile = new Projectile(this, portalProperties, projectileConfig);
+	}
+
 	setCollisions() {
 		this.physics.add.collider(this.player, [this.groundLayer, this.platformsLayer]);
-		this.physics.add.collider(this.neckis, [this.groundLayer, this.platformsLayer]);
+		this.physics.add.collider(this.neckis, [this.groundLayer, this.platformsLayer, this.edgeBlockLayer]);
 		this.physics.add.collider(this.sentinels, [this.groundLayer, this.platformsLayer]);
 		this.physics.add.collider(this.items, [this.groundLayer, this.platformsLayer]);
 		this.physics.add.collider(this.chests, [this.groundLayer, this.platformsLayer]);
 		this.groundLayer.setCollisionBetween(1, 500); // `start`, `stop` - value is the number in layer data
 		this.platformsLayer.setCollisionBetween(1, 500);
+		this.edgeBlockLayer.setCollisionBetween(1, 500);
 		// this.groundLayer.setCollisionByExclusion([1]);
 	}
 
 	setOverlap() {
-		this.physics.add.overlap(this.player, this.neckis, this.endGame, null, this);
+		this.physics.add.overlap(this.player, this.neckis, () => { this.player.takeDamage(1) });
 		this.physics.add.overlap(this.player, this.items, this.pickUpItem, null, this);
 		this.physics.add.overlap(this.projectiles, [this.neckis, this.sentinels, this.chests], this.projectileHit, null, this);
 		this.physics.add.overlap(this.beams, this.player, this.beamHit, null, this);
@@ -330,8 +327,11 @@ export default class Play extends Phaser.Scene {
 
 	// Not sure why these params are reversed here??
 	beamHit(targetHit, beam) {
-		this.player.takeDamage(1);
-		beam.explode();
+		if (beam.anims && beam.anims.currentFrame.textureFrame.includes('fire04')) {
+			// The other frames are charge-up animations
+			this.player.takeDamage(1);
+			beam.explode();
+		}
 	}
 
 	destroyTarget(target) {

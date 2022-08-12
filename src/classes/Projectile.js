@@ -1,5 +1,7 @@
 import * as Phaser from 'phaser';
 
+const SPEED = 500;
+
 /**
  * General projectiles
  */
@@ -21,13 +23,15 @@ export default class Projectile extends Phaser.GameObjects.Sprite {
 		scene.add.existing(this);
 		scene.physics.add.existing(this);
 
-		this.SPEED = 500;
+		this.speed = SPEED;
 		this.flipX = owner.flipX;
 		this.projectile = config.projectile;
+		this.targetx = config.target.x;
+		this.targety = config.target.y;
 		this.bulletAngle = config.angle;
 
 		this.scene.time.addEvent({
-			delay: 600, // lifetime of projectile
+			delay: config.lifetime || 600, // lifetime of projectile
 			callback: () => {
 				this.destroy()
 			}
@@ -40,6 +44,8 @@ export default class Projectile extends Phaser.GameObjects.Sprite {
 		super.preUpdate(time, delta);
 		if (this.bulletAngle) {
 			this.fireAngle();
+		} else if (this.targetx && this.targety) {
+			this.aimAtTarget();
 		} else {
 			this.fire();
 		}
@@ -51,12 +57,12 @@ export default class Projectile extends Phaser.GameObjects.Sprite {
 
 	// Fires in a straight line
 	fire() {
-		this.body.velocity.x = this.SPEED * (this.flipX ? 1 : -1);
+		this.body.velocity.x = this.speed * (this.flipX ? 1 : -1);
 	}
 
 	fireAngle() {
-		this.body.velocity.x = this.SPEED * (!this.flipX ? -1 : 1);
-		this.body.velocity.y = Math.sin(this.bulletAngle) * this.SPEED;
+		this.body.velocity.x = this.speed * (!this.flipX ? -1 : 1);
+		this.body.velocity.y = Math.sin(this.bulletAngle) * this.speed;
 	}
 
 	setAnimation() {
@@ -70,5 +76,20 @@ export default class Projectile extends Phaser.GameObjects.Sprite {
 			this.body.width = this.width;
 			this.body.height = this.height;
 		}
+	}
+
+	aimAtTarget() {
+		if (Math.abs(this.targetx - this.x) < 3 && Math.abs(this.targety - this.y) < 3) {
+			// Considering within 3 pixels close enough
+			return this.destroy();
+		}
+		// Calculate the angle from the beam to the target
+		var targetAngle = Phaser.Math.Angle.Between(
+			this.x, this.y,
+			this.targetx, this.targety
+		);
+		// Calculate velocity vector based on targetAngle and this.speed
+		this.body.velocity.x = Math.cos(targetAngle) * this.speed;
+		this.body.velocity.y = Math.sin(targetAngle) * this.speed;
 	}
 }

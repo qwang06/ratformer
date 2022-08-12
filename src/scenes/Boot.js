@@ -19,6 +19,7 @@ export default class Boot extends Phaser.Scene {
 		this.load.image('knighthawks', '/static/knight3.png');
 		this.load.image('chest', '/static/chest.png');
 		this.load.image('heart', '/static/heart.png');
+		this.load.image('portal', '/static/portal.png');
 		this.load.bitmapFont('arcade', '/static/arcade-font.png', '/static/arcade-font.xml');
 		this.load.multiatlas('ratz', '/static/ratz.json', '/static'); // main character
 		this.load.multiatlas('enemies', '/static/enemies.json', '/static');
