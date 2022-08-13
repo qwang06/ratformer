@@ -6,7 +6,7 @@ const SPEED = 500;
  * General projectiles
  */
 export default class Projectile extends Phaser.GameObjects.Sprite {
-	constructor(scene, owner, config) {
+	constructor(scene, owner, config = {}) {
 		const offsetx = owner.width - 10;
 
 		let startx, starty;
@@ -26,8 +26,8 @@ export default class Projectile extends Phaser.GameObjects.Sprite {
 		this.speed = SPEED;
 		this.flipX = owner.flipX;
 		this.projectile = config.projectile;
-		this.targetx = config.target.x;
-		this.targety = config.target.y;
+		this.targetx = config.target ? config.target.x : '';
+		this.targety = config.target ? config.target.y : '';
 		this.bulletAngle = config.angle;
 
 		this.scene.time.addEvent({

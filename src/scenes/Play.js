@@ -7,8 +7,7 @@ import Sentinel from '../classes/enemies/Sentinel';
 import Necki from '../classes/enemies/Necki';
 import TwitchJs from 'twitch-js';
 
-const TEST_CHANNEL = 'qwang00';
-const CHECK_MSG = 'KEKW';
+const TEST_CHANNEL = 'lec';
 const {
 	TWITCH_USER,
 	TWITCH_TOKEN
@@ -32,7 +31,7 @@ export default class Play extends Phaser.Scene {
 		this.setupLevel();
 		this.setupHUD();
 		this.setupCamera();
-		// this.setupTwitch();
+		this.setupTwitch();
 		this.cursors = this.input.keyboard.createCursorKeys();
 
 		this.input.keyboard.on('keydown-ESC', () => {
@@ -48,6 +47,8 @@ export default class Play extends Phaser.Scene {
 		if (this.player.body.velocity.x !== 0) {
 			this.searchForPortals();
 		}
+
+		this.spawnEnemies()
 	}
 
 	setupMap() {
@@ -123,25 +124,23 @@ export default class Play extends Phaser.Scene {
 		this.portals = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
 		this.enemyProjectiles = this.physics.add.group({ allowGravity: false, collideWorldBounds: true });
 
-		// TODO: these can probably be removed
-		this.meleePortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
+		this.gameMap.getObjectLayer('Portals').objects.forEach(portal => {
 			// This loops through all portals so creating new portals just need to run here
 			this.portals.get(portal.x, portal.y, 'portal')
 				.setOrigin(1)
 				.setDepth(-1)
 			;
-			return portal.properties.find(property => property.name === 'melee');
 		});
-		this.rangedPortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
-			return portal.properties.find(property => property.name === 'ranged');
-		});
-		this.projectilesPortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
-			return portal.properties.find(property => property.name === 'projectiles');
-		});
+		// this.rangedPortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
+		// 	return portal.properties.find(property => property.name === 'ranged');
+		// });
+		// this.projectilesPortals = this.gameMap.getObjectLayer('Portals').objects.filter(portal => {
+		// 	return portal.properties.find(property => property.name === 'projectiles');
+		// });
 
-		this.spawnSentinel(this.rangedPortals[0].x, this.rangedPortals[0].y);
-		this.spawnNecki(this.meleePortals[0].x, this.meleePortals[0].y);
-		this.spawnEnemyProjectile(this.projectilesPortals[0].x, this.projectilesPortals[0].y);
+		// this.spawnSentinel(this.rangedPortals[0].x, this.rangedPortals[0].y);
+		// this.spawnNecki(this.meleePortals[0].x, this.meleePortals[0].y);
+		// this.spawnEnemyProjectile(this.projectilesPortals[0].x, this.projectilesPortals[0].y);
 	}
 
 	createDeathZones() {
@@ -164,7 +163,7 @@ export default class Play extends Phaser.Scene {
 	}
 
 	searchForPortals() {
-		// if (!this.spawnQueue.length) return;
+		if (!this.spawnQueue.length) return;
 		const portalBounds = {
 			lowerX: this.player.x - this.game.config.width,
 			upperX: this.player.x + this.game.config.width,
@@ -193,46 +192,19 @@ export default class Play extends Phaser.Scene {
 		const nearestPortal = this.portalsWithinRange[0];
 		const nextSpawn = this.spawnQueue.shift();
 		console.log('nextSpawn', nextSpawn);
-		if (nextSpawn && nextSpawn.enemy === 'necki') {
-			this.spawnNecki(nearestPortal.x, nearestPortal.y);
+		if (nextSpawn && ['necki', 'sentinel'].includes(nextSpawn.enemy)) {
+			if (nextSpawn.enemy === 'necki') {
+				this.spawnEnemy(nearestPortal.x, nearestPortal.y, this.neckis, Necki);
+			} else if (nextSpawn.enemy === 'sentinel') {
+				this.spawnEnemy(nearestPortal.x, nearestPortal.y, this.sentinels, Sentinel);
+			} else if (nextSpawn.enemy === 'projectile') {
+				this.spawnEnemyProjectile(nearestPortal.x, nearestPortal.y);
+			}
 		}
 	}
 
-	spawnEvent(options) {
-		return this.time.addEvent({
-			delay: options.delay,
-			loop: options.loop || false,
-			callback: () => {
-				const portalCoordinates = options.portal.x + ',' + options.portal.y;
-				const portal = options.portal;
-				const firstDead = options.group.getFirst(false);
-				if (firstDead) {
-					firstDead.x = portal.x;
-					firstDead.y = portal.y;
-					firstDead.setActive(true);
-					firstDead.setVisible(true);
-					return;
-				}
-
-				if (options.group.getLength() === options.max) {
-					const firstAlive = options.group.getFirst(true);
-					firstAlive.x = portal.x;
-					firstAlive.y = portal.y;
-				} else {
-					options.spawner(portal.x, portal.y);
-				}
-			}
-		});
-	}
-
-	spawnNecki(x, y) {
-		const necki = new Necki(this, x, y);
-		this.neckis.add(necki);
-	}
-
-	spawnSentinel(x, y) {
-		const sentinel = new Sentinel(this, x, y);
-		this.sentinels.add(sentinel);
+	spawnEnemy(x, y, group, EnemyClass) {
+		group.add(new EnemyClass(this, x, y));
 	}
 
 	spawnEnemyProjectile(x, y) {
@@ -279,15 +251,18 @@ export default class Play extends Phaser.Scene {
 		if (this.chat) return;
 		this.chat = new TwitchJs.Chat({
 			username: TWITCH_USER,
-			token: TWITCH_TOKEN
+			token: TWITCH_TOKEN,
+			log: { level: 'error' }
 		});
 
-		this.chat.on('*', (event) => {
-			if (event.message.includes(CHECK_MSG)) {
-				console.log('event.message', event.message);
-				this.spawnQueue.push({
-					enemy: 'necki'
-				});
+		this.chat.on('PRIVMSG', (event) => {
+			if (!event.message) return;
+			if (event.message.includes('n')) {
+				this.spawnQueue.push({ enemy: 'necki' });
+			} else if (event.message.includes('s')) {
+				this.spawnQueue.push({ enemy: 'sentinel' });
+			} else if (event.message.includes('p')) {
+				this.spawnQueue.push({ enemy: 'projectile' });
 			}
 		});
 
