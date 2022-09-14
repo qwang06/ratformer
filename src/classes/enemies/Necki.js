@@ -4,8 +4,8 @@ import Enemy from '../Enemy';
 const SPEED = 150;
 
 export default class Necki extends Enemy {
-	constructor(scene, x, y) {
-		super(scene, x, y);
+	constructor(scene, x, y, name) {
+		super(scene, x, y, name);
 
 		this.anims.play('necki-walking');
 		this.deathAnim = 'necki-death';

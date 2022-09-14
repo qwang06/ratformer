@@ -3,8 +3,8 @@ import Enemy from '../Enemy';
 import Beam from '../Beam';
 
 export default class Sentinel extends Enemy {
-	constructor(scene, x, y) {
-		super(scene, x, y);
+	constructor(scene, x, y, name) {
+		super(scene, x, y, name);
 
 		this.anims.play('sentinel-idle');
 		this.deathScore = 300;

@@ -7,7 +7,7 @@ import Sentinel from '../classes/enemies/Sentinel';
 import Necki from '../classes/enemies/Necki';
 import TwitchJs from 'twitch-js';
 
-const TEST_CHANNEL = 'lec';
+const TEST_CHANNEL = 'qwang00';
 const {
 	TWITCH_USER,
 	TWITCH_TOKEN
@@ -22,6 +22,9 @@ export default class Play extends Phaser.Scene {
 		this.spawnQueue = [];
 		this.spawnerEvents = {};
 		this.score = 0;
+
+		// TODO: Create and save settings in menu
+		this.displayEnemyNames = true;
 	}
 
 	create() {
@@ -192,24 +195,24 @@ export default class Play extends Phaser.Scene {
 		const nearestPortal = this.portalsWithinRange[0];
 		const nextSpawn = this.spawnQueue.shift();
 		console.log('nextSpawn', nextSpawn);
-		if (nextSpawn && ['necki', 'sentinel'].includes(nextSpawn.enemy)) {
+		if (nextSpawn && ['necki', 'sentinel', 'projectile'].includes(nextSpawn.enemy)) {
 			if (nextSpawn.enemy === 'necki') {
-				this.spawnEnemy(nearestPortal.x, nearestPortal.y, this.neckis, Necki);
+				this.spawnEnemy(nearestPortal.x, nearestPortal.y, nextSpawn.name, this.neckis, Necki);
 			} else if (nextSpawn.enemy === 'sentinel') {
-				this.spawnEnemy(nearestPortal.x, nearestPortal.y, this.sentinels, Sentinel);
+				this.spawnEnemy(nearestPortal.x, nearestPortal.y, nextSpawn.name, this.sentinels, Sentinel);
 			} else if (nextSpawn.enemy === 'projectile') {
 				this.spawnEnemyProjectile(nearestPortal.x, nearestPortal.y);
 			}
 		}
 	}
 
-	spawnEnemy(x, y, group, EnemyClass) {
-		group.add(new EnemyClass(this, x, y));
+	spawnEnemy(x, y, name, group, EnemyClass) {
+		group.add(new EnemyClass(this, x, y, name));
 	}
 
 	spawnEnemyProjectile(x, y) {
 		const projectileConfig = {
-			projectile: 'subi',
+			projectile: 'subi', // TODO: make this dynamic
 			target: this.player,
 			lifetime: 1500
 		};
@@ -249,6 +252,13 @@ export default class Play extends Phaser.Scene {
 
 	setupTwitch() {
 		if (this.chat) return;
+		// These are the strings that will summon specific enemies, traps, projectiles
+		const stringTest = {
+			neckis: 'n', // TODO: These should really be `!spawn necki` or something to that effect but this is fine for testing
+			sentinels: 's',
+			projectiles: 'p'
+		};
+
 		this.chat = new TwitchJs.Chat({
 			username: TWITCH_USER,
 			token: TWITCH_TOKEN,
@@ -257,18 +267,26 @@ export default class Play extends Phaser.Scene {
 
 		this.chat.on('PRIVMSG', (event) => {
 			if (!event.message) return;
-			if (event.message.includes('n')) {
-				this.spawnQueue.push({ enemy: 'necki' });
-			} else if (event.message.includes('s')) {
-				this.spawnQueue.push({ enemy: 'sentinel' });
-			} else if (event.message.includes('p')) {
-				this.spawnQueue.push({ enemy: 'projectile' });
+			const spawnQueueObj = {
+				name: event.username,
+				enemy: ''
+			};
+
+			if (event.message.includes(stringTest.neckis)) {
+				spawnQueueObj.enemy = 'necki';
+			} else if (event.message.includes(stringTest.sentinels)) {
+				spawnQueueObj.enemy = 'sentinel';
+			} else if (event.message.includes(stringTest.projectiles)) {
+				spawnQueueObj.enemy = 'projectile';
+			}
+			if (spawnQueueObj.enemy) {
+				this.spawnQueue.push(spawnQueueObj);
 			}
 		});
 
 		this.chat.connect().then(() => {
 			this.chat.join(TEST_CHANNEL).then(response => {
-				console.log('response', response);
+				console.log('successfully joined channel');
 			}).catch(err => {
 				console.error('join error', err);
 			});
